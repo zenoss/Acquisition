@@ -153,9 +153,8 @@ typedef struct {
 } Wrapper;
 
 staticforward PyExtensionClass Wrappertype, XaqWrappertype;
-
-#define isWrapper(O) ((O)->ob_type==(PyTypeObject*)&Wrappertype || \
-		      (O)->ob_type==(PyTypeObject*)&XaqWrappertype)
+#define isWrapper(O) (PyObject_IsInstance(O, &Wrappertype) == 1 || \
+           PyObject_IsInstance(O, &XaqWrappertype) == 1)
 #define WRAPPER(O) ((Wrapper*)(O))
 
 static int
@@ -336,7 +335,7 @@ Wrapper_special(Wrapper *self, char *name, PyObject *oname)
     case 'e':
       if (strcmp(name,"explicit")==0)
 	{
-	  if (self->ob_type != (PyTypeObject *)&XaqWrappertype)
+    if (PyObject_IsInstance(self, (PyTypeObject *)&XaqWrappertype) == 0)
 	    return newWrapper(self->obj, self->container, 
 			      (PyTypeObject *)&XaqWrappertype);
 	  Py_INCREF(self);
@@ -526,8 +525,7 @@ Wrapper_findattr(Wrapper *self, PyObject *oname,
 				 /* Search object container if explicit,
 				    or object is implicit acquirer */
 				 explicit ||
-				 self->obj->ob_type == 
-				 (PyTypeObject*)&Wrappertype,
+         PyObject_IsInstance(self->obj, (PyTypeObject*)&Wrappertype) == 1,
 				  explicit, containment)))
 	    {
 	      if (PyECMethod_Check(r) && PyECMethod_Self(r)==self->obj)
@@ -1263,12 +1261,12 @@ Wrapper_acquire_method(Wrapper *self, PyObject *args, PyObject *kw)
 # if 0
   return Wrapper_findattr(self,name,filter,extra,OBJECT(self),1,
 			  explicit || 
-			  self->ob_type==(PyTypeObject*)&Wrappertype,
+        PyObject_IsInstance(self,(PyTypeObject*)&Wrappertype) == 1,
 			  explicit, containment);
 # else
   result = Wrapper_findattr(self,name,filter,extra,OBJECT(self),1,
 			  explicit || 
-			  self->ob_type==(PyTypeObject*)&Wrappertype,
+        PyObject_IsInstance(self, (PyTypeObject*)&Wrappertype) == 1,
 			  explicit, containment);
   if (result == NULL && defalt != NULL) {
     /* as "Python/bltinmodule.c:builtin_getattr" turn
@@ -1492,7 +1490,7 @@ capi_aq_acquire(PyObject *self, PyObject *name, PyObject *filter,
     return Wrapper_findattr(
 	      WRAPPER(self), name, filter, extra, OBJECT(self),1,
 	      explicit || 
-	      WRAPPER(self)->ob_type==(PyTypeObject*)&Wrappertype,
+        PyObject_IsInstance(WRAPPER(self), (PyTypeObject*)&Wrappertype) == 1,
 	      explicit, containment);  
   /* Not wrapped; check if we have a __parent__ pointer.  If that's
      the case, create a wrapper and pretend it's business as usual. */
